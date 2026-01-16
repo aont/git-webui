@@ -89,7 +89,7 @@ async def run_command(
 
 
 def _timestamped(message: str) -> str:
-    timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S")
     return f"[{timestamp} UTC] {message}"
 
 
