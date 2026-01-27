@@ -1,5 +1,5 @@
 (async function () {
-  const baseUrl = "http://endpoint";
+  const baseUrl = "https://aont.github.io/git-webui/";
   const taskId = location.pathname.split("/").filter(Boolean).pop();
 
   // --- helpers: Uint8Array <-> Base64URL ---
