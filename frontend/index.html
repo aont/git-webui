@@ -3,12 +3,11 @@
 <head>
     <meta charset="utf-8">
     <title>git apply web ui</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <style>
         body {
-            font-family: system-ui, sans-serif;
-            margin: 2rem;
             background: #f5f5f5;
-            color: #222;
+            padding: 2rem 1rem;
         }
         main {
             max-width: 960px;
@@ -19,54 +18,19 @@
             box-shadow: 0 4px 18px rgba(0,0,0,0.1);
         }
         form {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 1.5rem;
-        }
-        label {
-            font-weight: 600;
-            display: block;
-            margin-bottom: 0.5rem;
-        }
-        input[type=text], textarea, select {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            font-family: monospace;
-            background: #fafafa;
+            margin-bottom: 0;
         }
         textarea {
             min-height: 220px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
         }
-        .button {
-            padding: 0.75rem 1.5rem;
-            background: #2b6cb0;
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            cursor: pointer;
+        input[type=text], select {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
         }
-        .button:hover {
-            background: #2c5282;
-        }
-        .button.secondary {
-            background: #4a5568;
-            font-size: 0.9rem;
-            padding: 0.5rem 1rem;
-        }
-        .button.secondary:hover {
-            background: #2d3748;
-        }
-        .button:disabled {
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-        a.button,
-        a.button:hover,
-        a.button:visited,
-        a.button:active {
+        a[role=button],
+        a[role=button]:hover,
+        a[role=button]:visited,
+        a[role=button]:active {
           text-decoration: none;
         }
         .logs {
@@ -168,7 +132,7 @@
             display: flex;
             justify-content: center;
         }
-        .modal-actions .button {
+        .modal-actions button {
             min-width: 120px;
         }
     </style>
@@ -181,7 +145,7 @@
         <div>
             <div class="field-header">
                 <label for="repository_url">Repository URL (SSH recommended)</label>
-                <a class="button secondary hidden" id="open_repository" href="" target="_blank" rel="noopener">Open on GitHub</a>
+                <a role="button" class="secondary hidden" id="open_repository" href="" target="_blank" rel="noopener">Open on GitHub</a>
             </div>
             <div class="field-group">
                 <input type="text" id="repository_url" name="repository_url" required list="repository_history">
@@ -229,13 +193,13 @@
             <div class="field-header">
                 <label for="commit_message">Commit Message</label>
                 <div class="field-header-actions">
-                    <button type="button" class="button secondary" id="paste_commit_message" data-paste-target="commit_message">
+                    <button type="button" class="secondary" id="paste_commit_message" data-paste-target="commit_message">
                         Paste from clipboard
                     </button>
-                    <button type="button" class="button secondary" id="copy_patch">
+                    <button type="button" class="secondary" id="copy_patch">
                         Prompt for generating a commit message
                     </button>
-                    <a class="button secondary" id="open_chatgpt" href="#" target="_blank" rel="noopener noreferrer">
+                    <a role="button" class="secondary" id="open_chatgpt" href="#" target="_blank" rel="noopener noreferrer">
                         Generate with ChatGPT
                     </a>
                 </div>
@@ -257,7 +221,7 @@
         <div id="patch_group">
             <div class="field-header">
                 <label for="patch">Patch (applied with git apply --3way -v)</label>
-                <button type="button" class="button secondary" id="paste_patch" data-paste-target="patch">
+                <button type="button" class="secondary" id="paste_patch" data-paste-target="patch">
                     Paste from clipboard
                 </button>
             </div>
@@ -272,8 +236,8 @@
                 <label for="backend_url">Backend URL</label>
                 <div class="field-header-actions">
                     <span id="backend_status" class="status-pill">disconnected</span>
-                    <button type="button" class="button secondary" id="backend_apply">Connect</button>
-                    <button type="button" class="button secondary" id="backend_disconnect">Disconnect</button>
+                    <button type="button" class="secondary" id="backend_apply">Connect</button>
+                    <button type="button" class="secondary" id="backend_disconnect">Disconnect</button>
                 </div>
             </div>
             <div class="field-group">
@@ -281,12 +245,12 @@
             </div>
             <p class="subtle">Set the backend WebSocket endpoint as an absolute URL (including the /ws path). Examples: http://localhost:8080/ws, ws://localhost:8080/ws, https://localhost:1443/ws, wss://localhost:1443/ws. This value is saved in your browser.</p>
         </div>
-        <button type="button" class="button" id="submit_button">Apply Patch &amp; Push</button>
+        <button type="button" id="submit_button">Apply Patch &amp; Push</button>
     </form>
     <section id="log_section" class="logs hidden">
         <div class="field-header">
             <h2 id="log_status">Logs</h2>
-            <button type="button" class="button secondary" id="clear_logs">Clear logs</button>
+            <button type="button" class="secondary" id="clear_logs">Clear logs</button>
         </div>
         <pre id="log_output"></pre>
     </section>
@@ -296,7 +260,7 @@
         <h2 id="result_title">Request Complete</h2>
         <p id="result_message">Your request has finished.</p>
         <div class="modal-actions">
-            <button type="button" class="button" id="result_close">Close</button>
+            <button type="button" id="result_close">Close</button>
         </div>
     </div>
 </div>
