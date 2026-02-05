@@ -3,137 +3,57 @@
 <head>
     <meta charset="utf-8">
     <title>git apply web ui</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <style>
-        body {
-            font-family: system-ui, sans-serif;
-            margin: 2rem;
-            background: #f5f5f5;
-            color: #222;
-        }
-        main {
-            max-width: 960px;
-            margin: 0 auto;
-            background: #fff;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 18px rgba(0,0,0,0.1);
-        }
-        form {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 1.5rem;
-        }
-        label {
-            font-weight: 600;
-            display: block;
-            margin-bottom: 0.5rem;
-        }
-        input[type=text], textarea, select {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            font-family: monospace;
-            background: #fafafa;
-        }
-        textarea {
-            min-height: 220px;
-        }
-        .button {
-            padding: 0.75rem 1.5rem;
-            background: #2b6cb0;
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            cursor: pointer;
-        }
-        .button:hover {
-            background: #2c5282;
-        }
-        .button.secondary {
-            background: #4a5568;
-            font-size: 0.9rem;
-            padding: 0.5rem 1rem;
-        }
-        .button.secondary:hover {
-            background: #2d3748;
-        }
-        .button:disabled {
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-        a.button,
-        a.button:hover,
-        a.button:visited,
-        a.button:active {
-          text-decoration: none;
-        }
-        .logs {
-            margin-top: 2rem;
-            padding: 1.5rem;
-            border-radius: 10px;
-            background: #1a202c;
-            color: #edf2f7;
-            box-shadow: inset 0 0 8px rgba(0,0,0,0.4);
-        }
-        .logs.success { border: 2px solid #48bb78; }
-        .logs.failure { border: 2px solid #f56565; }
-        .logs.neutral { border: 2px solid #a0aec0; }
-        .logs pre {
-            margin: 0;
-            white-space: pre-wrap;
-        }
-        .field-group {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 1rem;
-        }
-        .toggle-group {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1rem;
-            align-items: center;
-        }
-        .toggle-group label {
-            font-weight: 500;
-            margin-bottom: 0;
-        }
-        .subtle {
-            color: #4a5568;
-            font-size: 0.9rem;
+        :root {
+            --pico-font-family-monospace: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
         }
         .hidden {
-            display: none;
+            display: none !important;
         }
         .field-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 0.75rem;
+            flex-wrap: wrap;
         }
         .field-header-actions {
             display: flex;
             align-items: center;
             gap: 0.75rem;
-            margin-left: auto;
             flex-wrap: wrap;
             justify-content: flex-end;
         }
         .status-pill {
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: var(--pico-border-radius);
             padding: 0.25rem 0.6rem;
-            border-radius: 999px;
             font-size: 0.8rem;
-            background: #e2e8f0;
-            color: #2d3748;
+            background: var(--pico-muted-color);
+            color: var(--pico-color);
         }
         .status-pill.connected {
-            background: #c6f6d5;
-            color: #22543d;
+            background: color-mix(in srgb, var(--pico-color-green-500) 18%, transparent);
+            border-color: var(--pico-color-green-500);
         }
         .status-pill.error {
-            background: #fed7d7;
-            color: #742a2a;
+            background: color-mix(in srgb, var(--pico-color-red-500) 18%, transparent);
+            border-color: var(--pico-color-red-500);
+        }
+        #log_section.success {
+            border-color: var(--pico-color-green-500);
+        }
+        #log_section.failure {
+            border-color: var(--pico-color-red-500);
+        }
+        #log_section.neutral {
+            border-color: var(--pico-muted-border-color);
+        }
+        #log_output {
+            max-height: 24rem;
+            overflow-y: auto;
+            margin-bottom: 0;
         }
         .modal {
             position: fixed;
@@ -141,47 +61,25 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(0, 0, 0, 0.45);
             padding: 1.5rem;
+            background: color-mix(in srgb, black 45%, transparent);
             z-index: 1000;
         }
-        .modal.hidden {
-            display: none;
-        }
         .modal-content {
-            background: #fff;
-            border-radius: 16px;
-            padding: 1.5rem 2rem;
-            max-width: 420px;
+            max-width: 30rem;
             width: 100%;
-            text-align: center;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
-        }
-        .modal-content.success {
-            border-top: 6px solid #48bb78;
-        }
-        .modal-content.failure {
-            border-top: 6px solid #f56565;
-        }
-        .modal-actions {
-            margin-top: 1.5rem;
-            display: flex;
-            justify-content: center;
-        }
-        .modal-actions .button {
-            min-width: 120px;
         }
     </style>
 </head>
 <body>
-<main>
+<main class="container">
     <h1>git apply --3way Web UI</h1>
     <p>Apply a patch to a GitHub repository, commit it, and push the result.</p>
     <form method="post" action="/" id="apply_form" novalidate>
         <div>
             <div class="field-header">
                 <label for="repository_url">Repository URL (SSH recommended)</label>
-                <a class="button secondary hidden" id="open_repository" href="" target="_blank" rel="noopener">Open on GitHub</a>
+                <a class="secondary hidden" role="button" id="open_repository" href="" target="_blank" rel="noopener">Open on GitHub</a>
             </div>
             <div class="field-group">
                 <input type="text" id="repository_url" name="repository_url" required list="repository_history">
@@ -209,7 +107,7 @@
                     Create an orphan branch
                 </label>
             </div>
-            <p class="subtle">A new branch name is required for commit-based or orphan modes.</p>
+            <small>A new branch name is required for commit-based or orphan modes.</small>
         </div>
         <div id="new_branch_group" class="hidden">
             <label for="new_branch">New Branch Name</label>
@@ -229,13 +127,13 @@
             <div class="field-header">
                 <label for="commit_message">Commit Message</label>
                 <div class="field-header-actions">
-                    <button type="button" class="button secondary" id="paste_commit_message" data-paste-target="commit_message">
+                    <button type="button" class="secondary" id="paste_commit_message" data-paste-target="commit_message">
                         Paste from clipboard
                     </button>
-                    <button type="button" class="button secondary" id="copy_patch">
+                    <button type="button" class="secondary" id="copy_patch">
                         Prompt for generating a commit message
                     </button>
-                    <a class="button secondary" id="open_chatgpt" href="#" target="_blank" rel="noopener noreferrer">
+                    <a class="secondary" id="open_chatgpt" role="button" href="#" target="_blank" rel="noopener noreferrer">
                         Generate with ChatGPT
                     </a>
                 </div>
@@ -257,7 +155,7 @@
         <div id="patch_group">
             <div class="field-header">
                 <label for="patch">Patch (applied with git apply --3way -v)</label>
-                <button type="button" class="button secondary" id="paste_patch" data-paste-target="patch">
+                <button type="button" class="secondary" id="paste_patch" data-paste-target="patch">
                     Paste from clipboard
                 </button>
             </div>
@@ -272,33 +170,33 @@
                 <label for="backend_url">Backend URL</label>
                 <div class="field-header-actions">
                     <span id="backend_status" class="status-pill">disconnected</span>
-                    <button type="button" class="button secondary" id="backend_apply">Connect</button>
-                    <button type="button" class="button secondary" id="backend_disconnect">Disconnect</button>
+                    <button type="button" class="secondary" id="backend_apply">Connect</button>
+                    <button type="button" class="secondary" id="backend_disconnect">Disconnect</button>
                 </div>
             </div>
             <div class="field-group">
                 <input type="text" id="backend_url" name="backend_url" placeholder="http://localhost:8080/ws">
             </div>
-            <p class="subtle">Set the backend WebSocket endpoint as an absolute URL (including the /ws path). Examples: http://localhost:8080/ws, ws://localhost:8080/ws, https://localhost:1443/ws, wss://localhost:1443/ws. This value is saved in your browser.</p>
+            <small>Set the backend WebSocket endpoint as an absolute URL (including the /ws path). Examples: http://localhost:8080/ws, ws://localhost:8080/ws, https://localhost:1443/ws, wss://localhost:1443/ws. This value is saved in your browser.</small>
         </div>
-        <button type="button" class="button" id="submit_button">Apply Patch &amp; Push</button>
+        <button type="button" id="submit_button">Apply Patch &amp; Push</button>
     </form>
-    <section id="log_section" class="logs hidden">
+    <article id="log_section" class="hidden">
         <div class="field-header">
             <h2 id="log_status">Logs</h2>
-            <button type="button" class="button secondary" id="clear_logs">Clear logs</button>
+            <button type="button" class="secondary" id="clear_logs">Clear logs</button>
         </div>
         <pre id="log_output"></pre>
-    </section>
+    </article>
 </main>
 <div id="result_modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="result_title">
-    <div class="modal-content" role="document">
+    <article class="modal-content" role="document">
         <h2 id="result_title">Request Complete</h2>
         <p id="result_message">Your request has finished.</p>
         <div class="modal-actions">
-            <button type="button" class="button" id="result_close">Close</button>
+            <button type="button" id="result_close">Close</button>
         </div>
-    </div>
+    </article>
 </div>
 <script>
     const form = document.getElementById("apply_form");
