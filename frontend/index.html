@@ -3,79 +3,24 @@
 <head>
     <meta charset="utf-8">
     <title>git apply web ui</title>
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+        crossorigin="anonymous"
+    >
     <style>
-        body {
-            font-family: system-ui, sans-serif;
-            margin: 2rem;
-            background: #f5f5f5;
-            color: #222;
-        }
         main {
             max-width: 960px;
             margin: 0 auto;
-            background: #fff;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 18px rgba(0,0,0,0.1);
-        }
-        form {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 1.5rem;
-        }
-        label {
-            font-weight: 600;
-            display: block;
-            margin-bottom: 0.5rem;
-        }
-        input[type=text], textarea, select {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            font-family: monospace;
-            background: #fafafa;
         }
         textarea {
             min-height: 220px;
-        }
-        .button {
-            padding: 0.75rem 1.5rem;
-            background: #2b6cb0;
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            cursor: pointer;
-        }
-        .button:hover {
-            background: #2c5282;
-        }
-        .button.secondary {
-            background: #4a5568;
-            font-size: 0.9rem;
-            padding: 0.5rem 1rem;
-        }
-        .button.secondary:hover {
-            background: #2d3748;
-        }
-        .button:disabled {
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-        a.button,
-        a.button:hover,
-        a.button:visited,
-        a.button:active {
-          text-decoration: none;
+            font-family: var(--bs-font-monospace);
         }
         .logs {
-            margin-top: 2rem;
-            padding: 1.5rem;
-            border-radius: 10px;
             background: #1a202c;
             color: #edf2f7;
-            box-shadow: inset 0 0 8px rgba(0,0,0,0.4);
         }
         .logs.success { border: 2px solid #48bb78; }
         .logs.failure { border: 2px solid #f56565; }
@@ -100,7 +45,7 @@
             margin-bottom: 0;
         }
         .subtle {
-            color: #4a5568;
+            color: var(--bs-secondary-color);
             font-size: 0.9rem;
         }
         .hidden {
@@ -121,19 +66,15 @@
             justify-content: flex-end;
         }
         .status-pill {
-            padding: 0.25rem 0.6rem;
-            border-radius: 999px;
             font-size: 0.8rem;
-            background: #e2e8f0;
-            color: #2d3748;
         }
         .status-pill.connected {
-            background: #c6f6d5;
-            color: #22543d;
+            background: var(--bs-success-bg-subtle);
+            color: var(--bs-success-text-emphasis);
         }
         .status-pill.error {
-            background: #fed7d7;
-            color: #742a2a;
+            background: var(--bs-danger-bg-subtle);
+            color: var(--bs-danger-text-emphasis);
         }
         .modal {
             position: fixed;
@@ -168,135 +109,115 @@
             display: flex;
             justify-content: center;
         }
-        .modal-actions .button {
+        .modal-actions .btn {
             min-width: 120px;
         }
     </style>
 </head>
-<body>
-<main>
-    <h1>git apply --3way Web UI</h1>
-    <p>Apply a patch to a GitHub repository, commit it, and push the result.</p>
-    <form method="post" action="/" id="apply_form" novalidate>
+<body class="bg-light py-4">
+<main class="card shadow-sm p-4">
+    <h1 class="h2 mb-2">git apply --3way Web UI</h1>
+    <p class="text-body-secondary mb-4">Apply a patch to a GitHub repository, commit it, and push the result.</p>
+    <form method="post" action="/" id="apply_form" novalidate class="d-grid gap-4">
         <div>
-            <div class="field-header">
-                <label for="repository_url">Repository URL (SSH recommended)</label>
-                <a class="button secondary hidden" id="open_repository" href="" target="_blank" rel="noopener">Open on GitHub</a>
+            <div class="field-header mb-2">
+                <label class="form-label fw-semibold mb-0" for="repository_url">Repository URL (SSH recommended)</label>
+                <a class="btn btn-sm btn-secondary hidden" id="open_repository" href="" target="_blank" rel="noopener">Open on GitHub</a>
             </div>
             <div class="field-group">
-                <input type="text" id="repository_url" name="repository_url" required list="repository_history">
+                <input class="form-control font-monospace" type="text" id="repository_url" name="repository_url" required list="repository_history">
             </div>
             <datalist id="repository_history"></datalist>
         </div>
         <div id="branch_group">
-            <label for="branch">Branch (optional: use the current branch)</label>
-            <input type="text" id="branch" name="branch" list="branch_history">
+            <label class="form-label fw-semibold" for="branch">Branch (optional: use the current branch)</label>
+            <input class="form-control font-monospace" type="text" id="branch" name="branch" list="branch_history">
             <datalist id="branch_history"></datalist>
         </div>
         <div>
-            <label>Mode</label>
+            <label class="form-label fw-semibold">Mode</label>
             <div class="toggle-group" role="radiogroup" aria-label="Mode">
-                <label>
-                    <input type="radio" name="branch_mode" value="default" checked>
-                    Default behavior (checkout when a branch is specified)
-                </label>
-                <label>
-                    <input type="radio" name="branch_mode" value="from_commit">
-                    Create a new branch from the specified commit
-                </label>
-                <label>
-                    <input type="radio" name="branch_mode" value="orphan">
-                    Create an orphan branch
-                </label>
+                <label class="form-check-label"><input class="form-check-input me-2" type="radio" name="branch_mode" value="default" checked>Default behavior (checkout when a branch is specified)</label>
+                <label class="form-check-label"><input class="form-check-input me-2" type="radio" name="branch_mode" value="from_commit">Create a new branch from the specified commit</label>
+                <label class="form-check-label"><input class="form-check-input me-2" type="radio" name="branch_mode" value="orphan">Create an orphan branch</label>
             </div>
-            <p class="subtle">A new branch name is required for commit-based or orphan modes.</p>
+            <p class="subtle mb-0 mt-2">A new branch name is required for commit-based or orphan modes.</p>
         </div>
         <div id="new_branch_group" class="hidden">
-            <label for="new_branch">New Branch Name</label>
-            <input type="text" id="new_branch" name="new_branch">
+            <label class="form-label fw-semibold" for="new_branch">New Branch Name</label>
+            <input class="form-control font-monospace" type="text" id="new_branch" name="new_branch">
         </div>
         <div id="commit_id_group" class="hidden">
-            <label for="base_commit">Base Commit ID (e.g., a1b2c3d)</label>
-            <input type="text" id="base_commit" name="base_commit">
+            <label class="form-label fw-semibold" for="base_commit">Base Commit ID (e.g., a1b2c3d)</label>
+            <input class="form-control font-monospace" type="text" id="base_commit" name="base_commit">
         </div>
         <div id="git_user_group">
-            <label for="git_user">Git User (Name &amp; Email)</label>
-            <select id="git_user" name="git_user">
+            <label class="form-label fw-semibold" for="git_user">Git User (Name &amp; Email)</label>
+            <select class="form-select font-monospace" id="git_user" name="git_user">
                 <option value="">Loading git users...</option>
             </select>
         </div>
         <div id="commit_message_group">
-            <div class="field-header">
-                <label for="commit_message">Commit Message</label>
+            <div class="field-header mb-2">
+                <label class="form-label fw-semibold mb-0" for="commit_message">Commit Message</label>
                 <div class="field-header-actions">
-                    <button type="button" class="button secondary" id="paste_commit_message" data-paste-target="commit_message">
-                        Paste from clipboard
-                    </button>
-                    <button type="button" class="button secondary" id="copy_patch">
-                        Prompt for generating a commit message
-                    </button>
-                    <a class="button secondary" id="open_chatgpt" href="#" target="_blank" rel="noopener noreferrer">
-                        Generate with ChatGPT
-                    </a>
+                    <button type="button" class="btn btn-sm btn-secondary" id="paste_commit_message" data-paste-target="commit_message">Paste from clipboard</button>
+                    <button type="button" class="btn btn-sm btn-secondary" id="copy_patch">Prompt for generating a commit message</button>
+                    <a class="btn btn-sm btn-secondary" id="open_chatgpt" href="#" target="_blank" rel="noopener noreferrer">Generate with ChatGPT</a>
                 </div>
             </div>
-            <textarea id="commit_message" name="commit_message" placeholder="e.g., Apply patch from Web UI"></textarea>
+            <textarea class="form-control" id="commit_message" name="commit_message" placeholder="e.g., Apply patch from Web UI"></textarea>
         </div>
         <div id="allow_empty_group">
-            <label>
-                <input type="checkbox" id="allow_empty_commit" name="allow_empty_commit" value="true">
-                Empty Commit
-            </label>
+            <label class="form-check-label"><input class="form-check-input me-2" type="checkbox" id="allow_empty_commit" name="allow_empty_commit" value="true">Empty Commit</label>
         </div>
         <div id="ssh_key_group">
-            <label for="ssh_key_path">SSH Private Key</label>
-            <select id="ssh_key_path" name="ssh_key_path">
+            <label class="form-label fw-semibold" for="ssh_key_path">SSH Private Key</label>
+            <select class="form-select font-monospace" id="ssh_key_path" name="ssh_key_path">
                 <option value="">Loading SSH keys...</option>
             </select>
         </div>
         <div id="patch_group">
-            <div class="field-header">
-                <label for="patch">Patch (applied with git apply --3way -v)</label>
-                <button type="button" class="button secondary" id="paste_patch" data-paste-target="patch">
-                    Paste from clipboard
-                </button>
+            <div class="field-header mb-2">
+                <label class="form-label fw-semibold mb-0" for="patch">Patch (applied with git apply --3way -v)</label>
+                <button type="button" class="btn btn-sm btn-secondary" id="paste_patch" data-paste-target="patch">Paste from clipboard</button>
             </div>
-            <textarea id="patch" name="patch" placeholder="diff --git a/..."></textarea>
+            <textarea class="form-control" id="patch" name="patch" placeholder="diff --git a/..."></textarea>
         </div>
         <div id="pr_message_group">
-            <label for="pr_message">PR Message</label>
-            <textarea id="pr_message" name="pr_message" placeholder="e.g., Release notes or PR summary"></textarea>
+            <label class="form-label fw-semibold" for="pr_message">PR Message</label>
+            <textarea class="form-control" id="pr_message" name="pr_message" placeholder="e.g., Release notes or PR summary"></textarea>
         </div>
         <div>
-            <div class="field-header">
-                <label for="backend_url">Backend URL</label>
+            <div class="field-header mb-2">
+                <label class="form-label fw-semibold mb-0" for="backend_url">Backend URL</label>
                 <div class="field-header-actions">
-                    <span id="backend_status" class="status-pill">disconnected</span>
-                    <button type="button" class="button secondary" id="backend_apply">Connect</button>
-                    <button type="button" class="button secondary" id="backend_disconnect">Disconnect</button>
+                    <span id="backend_status" class="status-pill badge text-bg-secondary">disconnected</span>
+                    <button type="button" class="btn btn-sm btn-secondary" id="backend_apply">Connect</button>
+                    <button type="button" class="btn btn-sm btn-secondary" id="backend_disconnect">Disconnect</button>
                 </div>
             </div>
             <div class="field-group">
-                <input type="text" id="backend_url" name="backend_url" placeholder="http://localhost:8080/ws">
+                <input class="form-control font-monospace" type="text" id="backend_url" name="backend_url" placeholder="http://localhost:8080/ws">
             </div>
-            <p class="subtle">Set the backend WebSocket endpoint as an absolute URL (including the /ws path). Examples: http://localhost:8080/ws, ws://localhost:8080/ws, https://localhost:1443/ws, wss://localhost:1443/ws. This value is saved in your browser.</p>
+            <p class="subtle mb-0 mt-2">Set the backend WebSocket endpoint as an absolute URL (including the /ws path). Examples: http://localhost:8080/ws, ws://localhost:8080/ws, https://localhost:1443/ws, wss://localhost:1443/ws. This value is saved in your browser.</p>
         </div>
-        <button type="button" class="button" id="submit_button">Apply Patch &amp; Push</button>
+        <button type="button" class="btn btn-primary px-4" id="submit_button">Apply Patch &amp; Push</button>
     </form>
-    <section id="log_section" class="logs hidden">
-        <div class="field-header">
-            <h2 id="log_status">Logs</h2>
-            <button type="button" class="button secondary" id="clear_logs">Clear logs</button>
+    <section id="log_section" class="logs hidden rounded-3 p-4 mt-4">
+        <div class="field-header mb-3">
+            <h2 id="log_status" class="h4 mb-0">Logs</h2>
+            <button type="button" class="btn btn-sm btn-secondary" id="clear_logs">Clear logs</button>
         </div>
-        <pre id="log_output"></pre>
+        <pre id="log_output" class="mb-0"></pre>
     </section>
 </main>
 <div id="result_modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="result_title">
     <div class="modal-content" role="document">
-        <h2 id="result_title">Request Complete</h2>
-        <p id="result_message">Your request has finished.</p>
+        <h2 id="result_title" class="h4">Request Complete</h2>
+        <p id="result_message" class="mb-0">Your request has finished.</p>
         <div class="modal-actions">
-            <button type="button" class="button" id="result_close">Close</button>
+            <button type="button" class="btn btn-primary" id="result_close">Close</button>
         </div>
     </div>
 </div>
