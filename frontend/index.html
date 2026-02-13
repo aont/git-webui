@@ -219,8 +219,12 @@
                     <input type="radio" name="branch_mode" value="tag_commit">
                     Create a tag on the specified commit and push the tag
                 </label>
+                <label>
+                    <input type="radio" name="branch_mode" value="delete_remote_tag">
+                    Delete the specified tag from the remote
+                </label>
             </div>
-            <p class="subtle">A new branch name is required for commit-based or orphan modes. Revert mode requires an existing branch and commit ID. Tag mode requires a commit ID and tag name.</p>
+            <p class="subtle">A new branch name is required for commit-based or orphan modes. Revert mode requires an existing branch and commit ID. Tag mode requires a commit ID and tag name. Remote tag deletion requires a tag name.</p>
         </div>
         <div id="new_branch_group" class="hidden">
             <label for="new_branch">New Branch Name</label>
@@ -857,7 +861,8 @@
         const needsCommit = selectedMode === "from_commit" || selectedMode === "revert_to_commit" || selectedMode === "tag_commit";
         const needsNewBranch = selectedMode === "from_commit" || selectedMode === "orphan";
         const needsExistingBranch = selectedMode === "revert_to_commit";
-        const needsTagName = selectedMode === "tag_commit";
+        const needsTagName = selectedMode === "tag_commit" || selectedMode === "delete_remote_tag";
+        const isDeleteRemoteTagMode = selectedMode === "delete_remote_tag";
         commitIdGroup.classList.toggle("hidden", !needsCommit);
         if (needsCommit) {
             commitIdField.removeAttribute("disabled");
@@ -893,7 +898,7 @@
                 branchField.removeAttribute("disabled");
             }
         }
-        const hideDetails = selectedMode === "from_commit" || selectedMode === "revert_to_commit" || selectedMode === "tag_commit";
+        const hideDetails = selectedMode === "from_commit" || selectedMode === "revert_to_commit" || selectedMode === "tag_commit" || isDeleteRemoteTagMode;
         branchGroup.classList.toggle("hidden", !(selectedMode === "default" || needsExistingBranch));
         if (selectedMode === "default" || needsExistingBranch) {
             branchField.removeAttribute("disabled");

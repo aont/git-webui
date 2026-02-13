@@ -564,7 +564,7 @@ async def process_submission(form: Dict[str, str], logs: LogSink) -> Dict[str, o
     commit_message = commit_message.strip("\n")
     allow_empty_commit = form.get("allow_empty_commit") == "true"
     patch_content = form.get("patch", "").replace("\r\n", "\n")
-    if branch_mode in {"from_commit", "revert_to_commit", "tag_commit"}:
+    if branch_mode in {"from_commit", "revert_to_commit", "tag_commit", "delete_remote_tag"}:
         commit_message = ""
         allow_empty_commit = False
         patch_content = ""
@@ -616,7 +616,7 @@ async def process_submission(form: Dict[str, str], logs: LogSink) -> Dict[str, o
         logs.append(_timestamped("Repository URL is required."))
         return {"form_values": form_values, "success": False}
 
-    if branch_mode not in {"from_commit", "revert_to_commit", "tag_commit"} and not patch_content.strip() and not allow_empty_commit:
+    if branch_mode not in {"from_commit", "revert_to_commit", "tag_commit", "delete_remote_tag"} and not patch_content.strip() and not allow_empty_commit:
         _log_debug(logs, "Patch content missing or whitespace.")
         logs.append(_timestamped("Patch content is required unless empty commit is allowed."))
         return {"form_values": form_values, "success": False}
@@ -637,6 +637,10 @@ async def process_submission(form: Dict[str, str], logs: LogSink) -> Dict[str, o
     if branch_mode == "tag_commit" and not tag_name:
         _log_debug(logs, "Tag name missing for tag mode.")
         logs.append(_timestamped("Tag name is required for tag mode."))
+        return {"form_values": form_values, "success": False}
+    if branch_mode == "delete_remote_tag" and not tag_name:
+        _log_debug(logs, "Tag name missing for remote tag deletion mode.")
+        logs.append(_timestamped("Tag name is required for remote tag deletion mode."))
         return {"form_values": form_values, "success": False}
     if branch_mode in {"from_commit", "orphan"} and not new_branch:
         _log_debug(logs, "New branch name missing for selected branch mode.")
@@ -833,6 +837,38 @@ async def process_submission(form: Dict[str, str], logs: LogSink) -> Dict[str, o
                     raise RuntimeError("Failed to push tag")
 
                 logs.append(_timestamped("Tag created and pushed successfully."))
+                success = True
+                return {"form_values": form_values, "success": success}
+            elif branch_mode == "delete_remote_tag":
+                logs.append(_timestamped(f"Deleting tag {tag_name} from origin."))
+                _log_debug(logs, f"Checking whether remote tag '{tag_name}' exists before deletion.")
+                remote_tag_result = await run_git_command(
+                    "ls-remote",
+                    "--tags",
+                    "--exit-code",
+                    "origin",
+                    f"refs/tags/{tag_name}",
+                    cwd=repo_dir,
+                    env=env,
+                    log=logs,
+                )
+                if remote_tag_result.returncode != 0:
+                    raise RuntimeError(f"Tag '{tag_name}' does not exist on origin")
+
+                _log_debug(logs, f"Deleting remote tag '{tag_name}' from origin.")
+                delete_tag_result = await run_git_command(
+                    "push",
+                    "origin",
+                    "--delete",
+                    tag_name,
+                    cwd=repo_dir,
+                    env=env,
+                    log=logs,
+                )
+                if delete_tag_result.returncode != 0:
+                    raise RuntimeError("Failed to delete remote tag")
+
+                logs.append(_timestamped("Remote tag deleted successfully."))
                 success = True
                 return {"form_values": form_values, "success": success}
             elif branch_mode == "revert_to_commit":
