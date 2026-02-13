@@ -555,6 +555,7 @@ async def process_submission(form: Dict[str, str], logs: LogSink) -> Dict[str, o
     repository_url = form.get("repository_url", "").strip()
     branch = form.get("branch", "").strip()
     new_branch = form.get("new_branch", "").strip()
+    tag_name = form.get("tag_name", "").strip()
     git_user_selection = form.get("git_user", "").strip()
     ssh_key_selection = form.get("ssh_key_path", "").strip()
     branch_mode = form.get("branch_mode", "default").strip()
@@ -563,7 +564,7 @@ async def process_submission(form: Dict[str, str], logs: LogSink) -> Dict[str, o
     commit_message = commit_message.strip("\n")
     allow_empty_commit = form.get("allow_empty_commit") == "true"
     patch_content = form.get("patch", "").replace("\r\n", "\n")
-    if branch_mode in {"from_commit", "revert_to_commit"}:
+    if branch_mode in {"from_commit", "revert_to_commit", "tag_commit"}:
         commit_message = ""
         allow_empty_commit = False
         patch_content = ""
@@ -571,6 +572,7 @@ async def process_submission(form: Dict[str, str], logs: LogSink) -> Dict[str, o
     _log_debug(logs, f"Parsed repository_url='{repository_url}'.")
     _log_debug(logs, f"Parsed branch='{branch or '(default)'}'.")
     _log_debug(logs, f"Parsed new_branch='{new_branch or '(none)'}'.")
+    _log_debug(logs, f"Parsed tag_name='{tag_name or '(none)'}'.")
     _log_debug(logs, f"Parsed branch_mode='{branch_mode}'.")
     _log_debug(logs, f"Parsed base_commit='{base_commit or '(none)'}'.")
     _log_debug(logs, f"Parsed git_user selection='{git_user_selection or '(none)'}'.")
@@ -584,6 +586,7 @@ async def process_submission(form: Dict[str, str], logs: LogSink) -> Dict[str, o
         "repository_url": repository_url,
         "branch": branch,
         "new_branch": new_branch,
+        "tag_name": tag_name,
         "commit_message": commit_message,
         "allow_empty_commit": "true" if allow_empty_commit else "",
         "git_user_selection": git_user_selection,
@@ -613,7 +616,7 @@ async def process_submission(form: Dict[str, str], logs: LogSink) -> Dict[str, o
         logs.append(_timestamped("Repository URL is required."))
         return {"form_values": form_values, "success": False}
 
-    if branch_mode not in {"from_commit", "revert_to_commit"} and not patch_content.strip() and not allow_empty_commit:
+    if branch_mode not in {"from_commit", "revert_to_commit", "tag_commit"} and not patch_content.strip() and not allow_empty_commit:
         _log_debug(logs, "Patch content missing or whitespace.")
         logs.append(_timestamped("Patch content is required unless empty commit is allowed."))
         return {"form_values": form_values, "success": False}
@@ -626,6 +629,14 @@ async def process_submission(form: Dict[str, str], logs: LogSink) -> Dict[str, o
     if branch_mode == "revert_to_commit" and not base_commit:
         _log_debug(logs, "Commit ID missing for revert mode.")
         logs.append(_timestamped("Commit ID is required for revert mode."))
+        return {"form_values": form_values, "success": False}
+    if branch_mode == "tag_commit" and not base_commit:
+        _log_debug(logs, "Commit ID missing for tag mode.")
+        logs.append(_timestamped("Commit ID is required for tag mode."))
+        return {"form_values": form_values, "success": False}
+    if branch_mode == "tag_commit" and not tag_name:
+        _log_debug(logs, "Tag name missing for tag mode.")
+        logs.append(_timestamped("Tag name is required for tag mode."))
         return {"form_values": form_values, "success": False}
     if branch_mode in {"from_commit", "orphan"} and not new_branch:
         _log_debug(logs, "New branch name missing for selected branch mode.")
@@ -766,6 +777,62 @@ async def process_submission(form: Dict[str, str], logs: LogSink) -> Dict[str, o
                 if push_result.returncode != 0:
                     raise RuntimeError("git push failed")
                 logs.append(_timestamped("Branch created from commit and pushed successfully."))
+                success = True
+                return {"form_values": form_values, "success": success}
+            elif branch_mode == "tag_commit":
+                logs.append(_timestamped(f"Creating tag {tag_name} on commit {base_commit}."))
+                _log_debug(logs, f"Checking whether local tag '{tag_name}' already exists.")
+                local_tag_result = await run_git_command(
+                    "rev-parse",
+                    "-q",
+                    "--verify",
+                    f"refs/tags/{tag_name}",
+                    cwd=repo_dir,
+                    env=env,
+                    log=logs,
+                )
+                if local_tag_result.returncode == 0:
+                    raise RuntimeError(f"Tag '{tag_name}' already exists locally")
+
+                _log_debug(logs, f"Checking whether remote tag '{tag_name}' already exists.")
+                remote_tag_result = await run_git_command(
+                    "ls-remote",
+                    "--tags",
+                    "--exit-code",
+                    "origin",
+                    f"refs/tags/{tag_name}",
+                    cwd=repo_dir,
+                    env=env,
+                    log=logs,
+                )
+                if remote_tag_result.returncode == 0:
+                    raise RuntimeError(f"Tag '{tag_name}' already exists on origin")
+
+                _log_debug(logs, f"Creating tag '{tag_name}' from commit '{base_commit}'.")
+                create_tag_result = await run_git_command(
+                    "tag",
+                    tag_name,
+                    base_commit,
+                    cwd=repo_dir,
+                    env=env,
+                    log=logs,
+                )
+                if create_tag_result.returncode != 0:
+                    raise RuntimeError("Failed to create tag")
+
+                _log_debug(logs, f"Pushing tag '{tag_name}' to origin.")
+                push_tag_result = await run_git_command(
+                    "push",
+                    "origin",
+                    f"refs/tags/{tag_name}",
+                    cwd=repo_dir,
+                    env=env,
+                    log=logs,
+                )
+                if push_tag_result.returncode != 0:
+                    raise RuntimeError("Failed to push tag")
+
+                logs.append(_timestamped("Tag created and pushed successfully."))
                 success = True
                 return {"form_values": form_values, "success": success}
             elif branch_mode == "revert_to_commit":

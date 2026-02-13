@@ -215,8 +215,12 @@
                     <input type="radio" name="branch_mode" value="revert_to_commit">
                     Reset an existing branch to the specified commit and force-push
                 </label>
+                <label>
+                    <input type="radio" name="branch_mode" value="tag_commit">
+                    Create a tag on the specified commit and push the tag
+                </label>
             </div>
-            <p class="subtle">A new branch name is required for commit-based or orphan modes. Revert mode requires an existing branch and commit ID.</p>
+            <p class="subtle">A new branch name is required for commit-based or orphan modes. Revert mode requires an existing branch and commit ID. Tag mode requires a commit ID and tag name.</p>
         </div>
         <div id="new_branch_group" class="hidden">
             <label for="new_branch">New Branch Name</label>
@@ -225,6 +229,10 @@
         <div id="commit_id_group" class="hidden">
             <label for="base_commit" id="base_commit_label">Base Commit ID (e.g., a1b2c3d)</label>
             <input type="text" id="base_commit" name="base_commit">
+        </div>
+        <div id="tag_name_group" class="hidden">
+            <label for="tag_name">Tag Name (e.g., v1.2.3)</label>
+            <input type="text" id="tag_name" name="tag_name">
         </div>
         <div id="git_user_group">
             <label for="git_user">Git User (Name &amp; Email)</label>
@@ -317,6 +325,8 @@
     const commitIdGroup = document.getElementById("commit_id_group");
     const commitIdField = document.getElementById("base_commit");
     const commitIdLabel = document.getElementById("base_commit_label");
+    const tagNameGroup = document.getElementById("tag_name_group");
+    const tagNameField = document.getElementById("tag_name");
     const branchGroup = document.getElementById("branch_group");
     const repositoryField = document.getElementById("repository_url");
     const branchField = document.getElementById("branch");
@@ -726,6 +736,7 @@
         branch_mode: getSelectedBranchMode(),
         new_branch: newBranchField.value,
         base_commit: commitIdField.value,
+        tag_name: tagNameField.value,
         git_user: gitUserField.value,
         commit_message: commitMessageField.value,
         pr_message: prMessageField.value,
@@ -759,6 +770,7 @@
         }
         applyDraftValue(newBranchField, draft.new_branch);
         applyDraftValue(commitIdField, draft.base_commit);
+        applyDraftValue(tagNameField, draft.tag_name);
         applyDraftValue(gitUserField, draft.git_user);
         applyDraftValue(commitMessageField, draft.commit_message);
         applyDraftValue(prMessageField, draft.pr_message);
@@ -842,9 +854,10 @@
 
     const toggleCommitField = () => {
         const selectedMode = document.querySelector("input[name='branch_mode']:checked").value;
-        const needsCommit = selectedMode === "from_commit" || selectedMode === "revert_to_commit";
+        const needsCommit = selectedMode === "from_commit" || selectedMode === "revert_to_commit" || selectedMode === "tag_commit";
         const needsNewBranch = selectedMode === "from_commit" || selectedMode === "orphan";
         const needsExistingBranch = selectedMode === "revert_to_commit";
+        const needsTagName = selectedMode === "tag_commit";
         commitIdGroup.classList.toggle("hidden", !needsCommit);
         if (needsCommit) {
             commitIdField.removeAttribute("disabled");
@@ -852,11 +865,21 @@
             if (commitIdLabel) {
                 commitIdLabel.textContent = selectedMode === "revert_to_commit"
                     ? "Commit ID to Reset Branch To (e.g., a1b2c3d)"
-                    : "Base Commit ID (e.g., a1b2c3d)";
+                    : selectedMode === "tag_commit"
+                        ? "Commit ID to Tag (e.g., a1b2c3d)"
+                        : "Base Commit ID (e.g., a1b2c3d)";
             }
         } else {
             commitIdField.setAttribute("disabled", "");
             commitIdField.removeAttribute("required");
+        }
+        tagNameGroup.classList.toggle("hidden", !needsTagName);
+        if (needsTagName) {
+            tagNameField.removeAttribute("disabled");
+            tagNameField.setAttribute("required", "");
+        } else {
+            tagNameField.setAttribute("disabled", "");
+            tagNameField.removeAttribute("required");
         }
         newBranchGroup.classList.toggle("hidden", !needsNewBranch);
         if (needsNewBranch) {
@@ -870,7 +893,7 @@
                 branchField.removeAttribute("disabled");
             }
         }
-        const hideDetails = selectedMode === "from_commit" || selectedMode === "revert_to_commit";
+        const hideDetails = selectedMode === "from_commit" || selectedMode === "revert_to_commit" || selectedMode === "tag_commit";
         branchGroup.classList.toggle("hidden", !(selectedMode === "default" || needsExistingBranch));
         if (selectedMode === "default" || needsExistingBranch) {
             branchField.removeAttribute("disabled");
@@ -1257,6 +1280,9 @@
         }
         if (queryParams.has("base_commit")) {
             commitIdField.value = queryParams.get("base_commit") || "";
+        }
+        if (queryParams.has("tag_name")) {
+            tagNameField.value = queryParams.get("tag_name") || "";
         }
         if (queryParams.has("git_user")) {
             gitUserField.value = queryParams.get("git_user") || "";
